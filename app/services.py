@@ -13,7 +13,7 @@ def convert_to_pdf_service(data):
     input_file_fullname = data['filename'] if 'filename' in data else None
     input_file_data = data['data'] if 'data' in data else None
     if (input_file_fullname and input_file_data):
-        filename, output_base64 = _convert_to_pdf(input_file_fullname, INPUT_DOCX_FILE)
+        filename, output_base64 = _convert_to_pdf(input_file_fullname, input_file_data)
         return filename,output_base64
     else:
         raise Exception('Неверные данные')
@@ -42,22 +42,23 @@ def _save_temp_input_docx_file(temp_file_name: str, input_file_extension: str, i
 def _convert_to_pdf(input_file_fullname: str, input_file_data: str) -> {str, str}:
     input_file_name, input_file_extension = _get_name_and_extension(input_file_fullname)
     output_filename = f'{input_file_name}.pdf'
-    output_file_path = f'{TEMP_FOLDER}/{output_filename}'
     if input_file_extension in ['doc', 'docx']:
         temp_file_name = _generate_temp_file_name()
         temp_docx_filepath = _save_temp_input_docx_file(temp_file_name, input_file_extension, input_file_data)
         print('DOCX', temp_docx_filepath)
         temp_pdf_filepath = f'{TEMP_FOLDER}/{temp_file_name}.pdf'
-        print('PDF', output_file_path)
+        print('PDF', temp_pdf_filepath)
         print('Конвертирую...')
-        
-        subprocess.run(["unoconv", "-f", "pdf", "-o", output_file_path, temp_docx_filepath], check=True)
-        print(f"Conversion successful. PDF saved to: {output_file_path}")
-
+        subprocess.run([
+            'libreoffice',
+            '--infilter="Microsoft Word 2007/2010/2013 XML"',
+            '--convert-to', 'pdf:writer_pdf_Export',
+            '--outdir', TEMP_FOLDER,
+            temp_docx_filepath])
         print('Конвертация закончена...')
-        output_file_base64 = base64.b64encode(open(output_file_path, 'rb').read()).decode('utf-8')
+        output_file_base64 = base64.b64encode(open(temp_pdf_filepath, 'rb').read()).decode('utf-8')
         os.remove(temp_docx_filepath)
-        #os.remove(output_file_path)
+        os.remove(temp_pdf_filepath)
         return output_filename, output_file_base64
     return 'sdf'
 
